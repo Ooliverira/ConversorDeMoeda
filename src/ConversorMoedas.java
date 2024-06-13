@@ -13,8 +13,10 @@ public class ConversorMoedas {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
 
     private JsonObject taxasDeCambio;
+    private final HistoricoConversoes historicoConversoes;
 
-    public ConversorMoedas(){
+    public ConversorMoedas(HistoricoConversoes historicoConversoes){
+        this.historicoConversoes = historicoConversoes;
         buscarTaxasDeCambio();
     }
 
@@ -37,7 +39,12 @@ public class ConversorMoedas {
     public double converterMoeda(double valor, String moedaOrigem, String moedaDestino) {
         double taxaOrigem = taxasDeCambio.get(moedaOrigem).getAsDouble();
         double taxaDestino = taxasDeCambio.get(moedaDestino).getAsDouble();
-        return (valor / taxaOrigem) * taxaDestino;
+        double valorConvertido = (valor / taxaOrigem) * taxaDestino;
+
+        String entradaHistorico = String.format("%,2f %s = %.2f %s", valor, moedaOrigem, valorConvertido, moedaDestino);
+        historicoConversoes.adicionarConversao(entradaHistorico);
+
+        return valorConvertido;
     }
 
     public boolean moedaValida(String moeda) {

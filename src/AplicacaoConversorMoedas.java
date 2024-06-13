@@ -3,13 +3,15 @@ import java.util.Scanner;
 public class AplicacaoConversorMoedas {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        ConversorMoedas conversor = new ConversorMoedas();
+        HistoricoConversoes historicoConversoes = new HistoricoConversoes();
+        ConversorMoedas conversor = new ConversorMoedas(historicoConversoes);
 
         while (true){
             System.out.println("Escolha uma opção:");
             System.out.println("1. Converter de USD para outra moeda");
             System.out.println("2. Converter de outra moedas para USD");
-            System.out.println("3. Sair");
+            System.out.println("3. Ver histórico de conversões");
+            System.out.println("4. Sair");
 
             int escolha = scanner.nextInt();
             switch (escolha){
@@ -20,6 +22,8 @@ public class AplicacaoConversorMoedas {
                     converterDeUSD(conversor, scanner);
                     break;
                 case 3:
+                    historicoConversoes.exibirHistoricoConversoes();
+                case 4:
                     System.out.println("Obrigado por usar o Conversor de Moedas.");
                     System.exit(0);
                 default:
