@@ -6,48 +6,47 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.Scanner;
 
 public class ConversorMoedas {
-    private static final String URL_API = "https://v6.exchangerate-api.com/v6/79a780d50ce245ea1023792e/latest/USD";
-    private static final HttpClient httpClient = HttpClient.newHttpClient();
+    private static final String API_KEY = "79a780d50ce245ea1023792e";
+    private static final String URL_API = "https://v6.exchangerate-api.com/v6/" + API_KEY + "/latest/";
+    private HistoricoConversoes historico;
 
-    private JsonObject taxasDeCambio;
-    private final HistoricoConversoes historicoConversoes;
 
-    public ConversorMoedas(HistoricoConversoes historicoConversoes){
-        this.historicoConversoes = historicoConversoes;
-        buscarTaxasDeCambio();
+        public ConversorMoedas(HistoricoConversoes historico){
+        this.historico = historico;
     }
 
-    private void buscarTaxasDeCambio() {
-        HttpRequest requisicao = HttpRequest.newBuilder()
-                .GET()
-                .uri(URI.create(URL_API))
+    private double buscarTaxasDeCambio(String moedaOrigem, String moedaDestino) throws IOException, InterruptedException {
+        String url = URL_API + moedaOrigem;
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
                 .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-        try{
-            HttpResponse<String> resposta = httpClient.send(requisicao, HttpResponse
-                    .BodyHandlers.ofString());
-            JsonObject respostaJson = new Gson().fromJson(resposta.body(), JsonObject.class);
-            taxasDeCambio = respostaJson.getAsJsonObject("conversion_rates");
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
+        if (response.statusCode() != 200){
+            throw new RuntimeException("Erro ao acessar a API.");
         }
+
+        String responseBody = response.body();
+        Gson gson = new Gson();
+        JsonObject jsonObject = gson.fromJson(responseBody, JsonObject.class);
+        JsonObject conversionRates = jsonObject.getAsJsonObject("conversion_rates");
+
+        return conversionRates.get(moedaDestino).getAsDouble();
     }
 
     public double converterMoeda(double valor, String moedaOrigem, String moedaDestino) {
-        double taxaOrigem = taxasDeCambio.get(moedaOrigem).getAsDouble();
-        double taxaDestino = taxasDeCambio.get(moedaDestino).getAsDouble();
-        double valorConvertido = (valor / taxaOrigem) * taxaDestino;
+      try {
+          double taxaCambio = buscarTaxasDeCambio(moedaOrigem, moedaDestino);
+          double valorConvertido = valor * taxaCambio;
+          String entradahistorico = String.format("%.2f %s = %.2f %s", valor, moedaOrigem, valorConvertido, moedaDestino);
+          historico.adicionarConversao(entradahistorico);
+          return valorConvertido;
+      } catch (IOException | InterruptedException e) {
+          throw new RuntimeException("Erro ao buscar taxa de câmbio: " + e.getMessage());
 
-        String entradaHistorico = String.format("%,2f %s = %.2f %s", valor, moedaOrigem, valorConvertido, moedaDestino);
-        historicoConversoes.adicionarConversao(entradaHistorico);
-
-        return valorConvertido;
-    }
-
-    public boolean moedaValida(String moeda) {
-        return taxasDeCambio.has(moeda);
+      }
     }
 }
